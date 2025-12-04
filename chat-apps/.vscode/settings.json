@@ -1,0 +1,24 @@
+{
+  // 1. Mengaktifkan format otomatis saat menyimpan file
+  "editor.formatOnSave": true,
+
+  // 2. Menentukan formatter default (Misalnya, Prettier)
+  // Anda harus sudah menginstall extension Prettier di VS Code
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // 3. Mengaktifkan perbaikan otomatis dari linter (misalnya ESLint) saat menyimpan
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Pengaturan khusus untuk bahasa tertentu (contoh untuk HTML/CSS/Javascript)
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

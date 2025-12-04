@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Dashboard - Live Chat Support</title>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <link rel="stylesheet" href="/assets/agent/style.css">
+    
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div class="sidebar">
+        <div class="sidebar-header">Workspace</div>
+        <div class="list-header">Livechat</div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <div class="user-dropdown">
+                <button class="user-btn" id="userBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                    </svg>
+                    <span id="agentNameDisplay">Agent</span>
+                </button>
+
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-header">Agent Support</div>
+                    <a href="./master-customer.html" class="dropdown-header">Master Customer</a>
+                    <div class="dropdown-item danger" id="signOutBtn">Sign Out</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="customer-list">
+                <div class="list-header">List Data</div>
+                <div class="list-content" id="customerList"></div>
+            </div>
+
+            <div class="chat-detail">
+                <div class="detail-header">Detail Data</div>
+
+                <div class="chat-area">
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <p style="text-align:center;color:#888;margin-top:30px">
+                                Klik customer → Mulai chat
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="remarks-section">
+                    <div class="remarks-container">
+                        <textarea id="remarksInput" class="remarks-input" placeholder="Ketik balasan Anda..."></textarea>
+                        <div class="remarks-actions">
+                            <button id="sendBtn" class="send-btn">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function () {
+
+    const socket = io();
+    let currentRoom = null;
+    let currentCustomerEmail = null;
+    const displayedMessages = new Set();
+    let viewButtonBusy = false;
+
+    const agentName = localStorage.getItem("agentName");
+    const agentEmail = localStorage.getItem("agentEmail");
+
+    if (!agentName || !agentEmail) {
+        window.location.href = "index.html";
+        return;
+    }
+    $("#agentNameDisplay").text(agentName);
+
+    socket.emit("agent-login", agentName);
+
+    let activeCustomers = {};
+    let chatHistoryCache = {};
+
+    $(document).on("click", "#userBtn", function(e) {
+        e.stopPropagation();
+        $("#dropdownMenu").toggleClass("show");
+    });
+
+    $(document).on("click", function(e) {
+        if (!$(e.target).closest(".user-dropdown").length) {
+            $("#dropdownMenu").removeClass("show");
+        }
+    });
+
+    $("#signOutBtn").on("click", function() {
+        localStorage.removeItem("agentName");
+        localStorage.removeItem("agentEmail");
+        window.location.href = "index.html";
+    });
+
+    
+    socket.on("sync-active-customers", (data) => {
+        activeCustomers = data.activeCustomers || {};
+        chatHistoryCache = data.chatHistory || {};
+        loadCustomerList();
+    });
+
+    function loadCustomerList() {
+        $.get("/agent/customers", function(customers) {
+            const box = $("#customerList");
+            box.empty();
+
+            if (customers.length === 0) {
+                box.html(`<p style="padding:10px;color:#777">Belum ada customer.</p>`);
+                return;
+            }
+
+            customers.forEach(c => {
+                const roomId = activeCustomers[c.email] || null;
+
+                let lastBot = "-";
+                let lastClient = "-";
+                let lastInsert = c.created_at;
+
+                if (roomId && chatHistoryCache[roomId]) {
+                    const history = chatHistoryCache[roomId];
+
+                    const botMsg = [...history].reverse().find(m => m.name === "Agent BOT");
+                    if (botMsg) lastBot = botMsg.message;
+
+                    const clientMsg = [...history].reverse().find(m => m.name === c.name);
+                    if (clientMsg) lastClient = clientMsg.message;
+
+                    const lastMsg = history[history.length - 1];
+                    if (lastMsg) lastInsert = lastMsg.time || lastInsert;
+                }
+
+                box.append(`
+                    <div class="customer-card" data-email="${c.email}" data-room="${roomId || ""}">
+                        <div class="customer-name">${c.name}</div>
+                        <div class="customer-info">Email: <span>${c.email}</span></div>
+                        <div class="customer-info">Phone: <span>${c.phone}</span></div>
+                        <div class="customer-info">Create: <span>${c.created_at}</span></div>
+                        <div class="customer-info">BOT: <span>${lastBot}</span></div>
+                        <div class="customer-info">Client: <span>${lastClient}</span></div>
+                        <div class="customer-info">Insert: <span>${lastInsert}</span></div>
+
+                        <button class="view-btn" ${roomId ? "" : "disabled"}>
+                            ${roomId ? "View" : "Menunggu koneksi..."}
+                        </button>
+                    </div>
+                `);
+            });
+        });
+    }
+
+    
+    socket.on("new-customer", ({ roomId, customer, history }) => {
+        activeCustomers[customer.email] = roomId;
+        chatHistoryCache[roomId] = history || [];
+        loadCustomerList();
+    });
+
+    socket.on("customer-reconnected", ({ roomId, customer, history }) => {
+        activeCustomers[customer.email] = roomId;
+        chatHistoryCache[roomId] = history || [];
+        loadCustomerList();
+    });
+
+    socket.on("customer-left", ({ email }) => {
+        delete activeCustomers[email];
+
+        const card = document.querySelector(`.customer-card[data-email="${email}"]`);
+        if (card) card.remove();
+
+        if (currentCustomerEmail === email) {
+            $("#chatMessages").html(`
+                <p style="text-align:center;color:#ff4444;margin-top:20px">
+                    Customer telah keluar dari percakapan.
+                </p>
+            `);
+            currentRoom = null;
+            currentCustomerEmail = null;
+        }
+
+        loadCustomerList();
+    });
+
+   
+    $(document).on("click", ".view-btn", function () {
+        if (viewButtonBusy) return;
+
+        const card = $(this).closest(".customer-card");
+        const email = card.data("email");
+        const room = card.data("room");
+
+        if (!room) return;
+
+        viewButtonBusy = true;
+
+        currentRoom = room;
+        currentCustomerEmail = email;
+
+        $("#chatMessages").html("");
+        displayedMessages.clear();
+
+        socket.emit("agent-join-room", room);
+
+        $(".customer-card").removeClass("active");
+        card.addClass("active");
+
+        setTimeout(() => viewButtonBusy = false, 400);
+    });
+
+    socket.on("receive-message", (msg) => {
+        if (msg.room !== currentRoom) return;
+
+        const uid = `${msg.room}-${msg.time}-${msg.name}-${msg.message}`;
+        if (displayedMessages.has(uid)) return;
+        displayedMessages.add(uid);
+
+        
+        let type = "customer";
+        if (msg.name === agentName || msg.name === "Agent BOT") {
+            type = "agent";
+        }
+
+        appendMessage(type, msg.name, msg.message, msg.time);
+
+        if (!chatHistoryCache[msg.room]) chatHistoryCache[msg.room] = [];
+        chatHistoryCache[msg.room].push(msg);
+
+        loadCustomerList();
+    });
+
+    function appendMessage(type, sender, text, time) {
+        const avatarEmoji = type === "agent" ? "🎧" : "👤";
+
+        const html = `
+            <div class="message ${type}">
+                <div class="message-avatar">${avatarEmoji}</div>
+                <div class="message-content">
+                    <div class="message-sender">${sender}</div>
+                    <div class="message-bubble">${escapeHtml(text)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            </div>
+        `;
+
+        $("#chatMessages").append(html);
+        scrollBottom();
+    }
+
+    function scrollBottom() {
+        const el = document.getElementById("chatMessages");
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/[&<>"']/g, m => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;',
+            '"': '&quot;', "'": '&#039;'
+        }[m]));
+    }
+
+    function sendMessage() {
+        const text = $("#remarksInput").val().trim();
+        if (!text || !currentRoom) return;
+
+        socket.emit("send-message", {
+            room: currentRoom,
+            name: agentName,
+            message: text
+        });
+
+        $("#remarksInput").val("");
+    }
+
+    $("#sendBtn").click(sendMessage);
+    $("#remarksInput").keydown(e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Support - Connect</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/assets/customer/style.css">
+</head>
+<body>
+
+    <div class="chat-bubble hidden" id="chatBubble">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+    </div>
+
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-avatar">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <div class="chat-title">
+                    <h3>Live chat Support</h3>
+                    <p id="statusText">Menunggu koneksi...</p>
+                </div>
+            </div>
+            <button class="close-btn" id="closeChat">X</button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+        </div>
+
+        <div class="chat-input-container">
+            <textarea class="chat-input" id="messageInput" placeholder="Ketik pesan Anda..." rows="1"></textarea>
+            <button class="send-button" id="sendButton">Kirim</button>
+        </div>
+    </div>
+
+<script>
+$(document).ready(function() {
+
+    const socket = io();
+
+    let roomId = localStorage.getItem("roomId");
+    const customer = JSON.parse(localStorage.getItem("customerData") || "{}");
+    const customerName = customer.name || "Customer";
+    const customerEmail = customer.email || "";
+    
+    const displayedMessages = new Set();
+    let isConnected = false;
+
+    if (!roomId || !customerEmail) {
+        alert("Data tidak lengkap. Silakan mulai ulang chat.");
+        window.location.href = "/customer/index.html";
+        return;
+    }
+
+    $('#chatBubble, #closeChat').click(function() {
+        $('#chatPanel, #chatBubble').toggleClass('hidden');
+    });
+
+    $('#messageInput').on('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+
+    function messageId(msg) {
+        return `${msg.room}-${msg.time}-${msg.name}-${msg.message}`.replace(/\s/g, '');
+    }
+
+    function sendMessage() {
+        const message = $('#messageInput').val().trim();
+        if (!message || !isConnected) return;
+
+        socket.emit("send-message", {
+            room: roomId,
+            name: customerName,
+            message
+        });
+
+        $('#messageInput').val('').css('height', 'auto');
+    }
+
+    $('#sendButton').click(sendMessage);
+    $('#messageInput').keypress(function(e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    socket.off("receive-message");
+    socket.on("receive-message", (msg) => {
+
+        if (msg.room !== roomId) return;
+
+        const id = messageId(msg);
+        if (displayedMessages.has(id)) return;
+
+        displayedMessages.add(id);
+
+        appendMessage(
+            msg.message,
+            msg.name !== customerName ? "agent" : "user",
+            msg.name,
+            msg.time
+        );
+
+        console.log("Customer RECEIVED MESSAGE:", msg);
+    });
+
+    socket.on("connected-to-agent", (data) => {
+        roomId = data.roomId;
+        isConnected = true;
+
+        localStorage.setItem("roomId", roomId);
+        $('#statusText').text("Agent terhubung ✓");
+
+        $("#chatMessages").html("");
+        displayedMessages.clear();
+
+        console.log("Customer connected to agent:", roomId);
+    });
+
+    socket.on("customer-reconnected", () => {
+        isConnected = true;
+        $('#statusText').text("Agent terhubung ✓");
+
+        $("#chatMessages").html("");
+        displayedMessages.clear();
+
+        console.log("Customer reconnected, waiting history");
+    });
+
+    socket.on("agent-disconnected", () => {
+        isConnected = false;
+        $('#statusText').text("Agent offline");
+    });
+
+    socket.on("disconnect", () => {
+        isConnected = false;
+        $('#statusText').text("Koneksi terputus");
+    });
+
+    socket.on("connect", () => {
+        console.log("Socket reconnected → Delay 200ms sebelum join queue ulang");
+
+        $("#chatMessages").html("");
+        displayedMessages.clear();
+
+        setTimeout(() => {
+            if (customerEmail) {
+                console.log("Customer JOIN-QUEUE ulang setelah refresh");
+
+                socket.emit("join-queue", {
+                    name: customerName,
+                    email: customerEmail,
+                    phone: customer.phone || ""
+                });
+            }
+        }, 200);
+    });
+
+    console.log("Customer initial join queue");
+
+    socket.emit("join-queue", {
+        name: customerName,
+        email: customerEmail,
+        phone: customer.phone || ""
+    });
+
+    function appendMessage(text, type, sender, time) {
+        const avatar = type === 'user' ? '👤' : '🎧';
+
+        const html = `
+            <div class="message ${type}">
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div class="message-sender">${sender}</div>
+                    <div class="message-bubble">${escapeHtml(text)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            </div>
+        `;
+
+        $('#chatMessages').append(html);
+        $('#chatMessages')[0].scrollTop = $('#chatMessages')[0].scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/[&<>"']/g, m => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[m]);
+    }
+
+        socket.on("chat-ended", () => {
+
+        console.log("EVENT chat-ended diterima (CUSTOMER)");
+
+        alert("Sesi chat telah berakhir. Anda akan diarahkan ke halaman utama.");
+
+        localStorage.removeItem("roomId");
+        window.location.href = "/customer/index.html";
+    });
+
+});
+
+</script>
+
+
+
+</body>
+</html>

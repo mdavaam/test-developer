@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Customer - Live Chat Support</title>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="/assets/agent/style.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div class="sidebar">
+        <div class="sidebar-header">Workspace</div>
+        <div class="list-header">Livechat</div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <div class="user-dropdown">
+                <button class="user-btn" id="userBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
+                        10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 
+                        0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 
+                        1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 
+                        4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 
+                        3.22-6 3.22z"/>
+                    </svg>
+                    <span id="agentNameDisplay">Agent</span>
+                </button>
+
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-header">Agent Support</div>
+                    <a href="./master-customer.html" class="dropdown-header">Master Customer</a>
+                    <div class="dropdown-item danger" id="signOutBtn">Sign Out</div>
+                </div>
+            </div>
+        </div>
+
+       
+        <div class="content-area master">
+
+            <div class="page-title">Master Customer</div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Login UUID</th>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Phone</th>
+                        <th>Cell</th>
+                        <th>Picture</th>
+                    </tr>
+                </thead>
+
+                <tbody id="customerTable"></tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+
+$(document).ready(function() {
+
+    const agentName = localStorage.getItem("agentName");
+    if (agentName) {
+        $("#agentNameDisplay").text(agentName);
+    }
+
+    $(document).on("click", "#userBtn", function(e) {
+        e.stopPropagation();
+        $("#dropdownMenu").toggleClass("show");
+    });
+
+    $(document).on("click", function(e) {
+        if (!$(e.target).closest(".user-dropdown").length) {
+            $("#dropdownMenu").removeClass("show");
+        }
+    });
+    
+    $("#signOutBtn").on("click", function() {
+        localStorage.removeItem("agentName");
+        localStorage.removeItem("agentEmail");
+        window.location.href = "index.html";
+    });
+
+
+    //AJAX
+
+    $.ajax({
+        url: "/agent/master-customers",
+        method: "GET",
+        success: function(masterCustomers) {
+
+            const tbody = $("#customerTable");
+            tbody.empty();
+
+            masterCustomers.forEach(c => {
+                tbody.append(`
+                    <tr>
+                        <td>${c.name}</td>
+                        <td>${c.email}</td>
+                        <td>${c.uuid}</td>
+                        <td>${c.username}</td>
+                        <td>${c.password}</td>
+                        <td>${c.phone}</td>
+                        <td>${c.cell}</td>
+                        <td><img src="${c.picture}" class="customer-avatar"></td>
+                    </tr>
+                `);
+            });
+
+        },
+        error: function() {
+            alert("Gagal fetch data RandomUser API");
+        }
+    });
+
+});
+</script>
+
+</body>
+</html>

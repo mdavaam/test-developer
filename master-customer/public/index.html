@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Customer - Live Chat Support</title>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="sidebar-header">Workspace</div>
+            <div class="sidebar-menu">
+                <div class="menu-item active">Master Customer</div>
+    </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="page-title">Master Customer</div>
+
+            <div class="content-area">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>name</th>
+                            <th>email</th>
+                            <th>login - uuid</th>
+                            <th>login - username</th>
+                            <th>password</th>
+                            <th>phone</th>
+                            <th>cell</th>
+                            <th>picture</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="customerTable"></tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- AJAX -->
+    <script>
+    $(document).ready(function () {
+
+        $.ajax({
+            url: "http://localhost:8000/api/master-customers",
+            method: "GET",
+            success: function (res) {
+
+                let tbody = $("#customerTable");
+                tbody.empty();
+
+                let customers = res.data ?? res;
+
+                customers.forEach(c => {
+                    tbody.append(`
+                        <tr>
+                            <td>${c.name}</td>
+                            <td>${c.email}</td>
+                            <td>${c.uuid}</td>
+                            <td>${c.username}</td>
+                            <td>${c.password}</td>
+                            <td>${c.phone}</td>
+                            <td>${c.cell}</td>
+                            <td><img src="${c.picture}" class="avatar" width="40"></td>
+                        </tr>
+                    `);
+                });
+            },
+
+            error: function (xhr) {
+                alert("Gagal mengambil data master customer");
+                console.log(xhr.responseText);
+            }
+        });
+
+    });
+    </script>
+
+</body>
+</html>

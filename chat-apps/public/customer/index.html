@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Widget Demo</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/customer/style.css">
+  </head>
+  <body>
+    
+    <div class="chat-bubble" id="chatBubble">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        />
+      </svg>
+    </div>
+
+    <div class="chat-panel hidden" id="chatPanel">
+      <div class="chat-header">
+        <div class="chat-header-info">
+          <div class="chat-avatar">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+              />
+            </svg>
+          </div>
+          <div class="chat-title">
+            <h3>Live chat Support</h3>
+            <p>We're here to help!</p>
+          </div>
+        </div>
+        <button class="close-btn" id="closeChat">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <line
+              x1="18"
+              y1="6"
+              x2="6"
+              y2="18"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="chat-form-content">
+        <p class="form-description">
+          Please enter your personal information to connect with us.
+        </p>
+
+        <form id="chatForm">
+          <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" placeholder="johndoe" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="johndoe@test.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" placeholder="08XXX" required />
+          </div>
+
+          <div class="captcha-container">
+            <div class="captcha-image" id="captchaText">vYLDAc</div>
+            <button type="button" class="captcha-refresh" id="refreshCaptcha">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="form-group">
+            <input
+              type="text"
+              id="captchaInput"
+              placeholder="Type captcha here..."
+              required
+            />
+          </div>
+
+          <button type="submit" class="submit-btn">Next</button>
+        </form>
+      </div>
+    </div>
+    <script>
+  $(document).ready(function () {
+    
+    $("#chatBubble").click(function () {
+      $("#chatPanel").toggleClass("hidden");
+      $(this).toggleClass("hidden");
+    });
+
+    $("#closeChat").click(function () {
+      $("#chatPanel").addClass("hidden");
+      $("#chatBubble").removeClass("hidden");
+    });
+
+    function generateCaptcha() {
+      const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let captcha = "";
+      for (let i = 0; i < 6; i++) {
+        captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return captcha;
+    }
+
+    let currentCaptcha = generateCaptcha();
+    $("#captchaText").text(currentCaptcha);
+
+    $("#refreshCaptcha").click(function () {
+      currentCaptcha = generateCaptcha();
+      $("#captchaText").text(currentCaptcha);
+    });
+
+    $("#chatForm").submit(function (e) {
+      e.preventDefault();
+
+      const name = $("#name").val();
+      const email = $("#email").val();
+      const phone = $("#phone").val();
+      const captchaInput = $("#captchaInput").val();
+
+      if (!name || !email || !phone || !captchaInput) {
+        alert("Please fill in all fields");
+        return;
+      }
+
+      if (captchaInput !== currentCaptcha) {
+        alert("Captcha incorrect!");
+        return;
+      }
+
+      $.ajax({
+        url: "/customer/register",
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ name, email, phone }),
+        success: function (res) {
+          localStorage.setItem(
+            "customerData",
+            JSON.stringify(res.customer)
+          );
+          
+          window.location.href = "/customer/queue.html";
+        },
+        error: function () {
+          alert("Failed to register customer!");
+        },
+      });
+    });
+  });
+</script>
+
+  </body>
+</html>

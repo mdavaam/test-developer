@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Support - Queue</title>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <link rel="stylesheet" href="/assets/customer/style.css">
+</head>
+
+<body>
+
+    <div class="chat-bubble hidden" id="chatBubble">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+    </div>
+
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-avatar">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <div class="chat-title">
+                    <h3>Live chat Support</h3>
+                    <p>Sedang mencari agent...</p>
+                </div>
+            </div>
+
+            <button class="close-btn" id="closeChat">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="queue-content">
+            <div class="queue-message">
+                Oh my gosh, We are apologize.
+            </div>
+
+            <div class="queue-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                    <line x1="6" y1="1" x2="6" y2="4"/>
+                    <line x1="10" y1="1" x2="10" y2="4"/>
+                    <line x1="14" y1="1" x2="14" y2="4"/>
+                </svg>
+            </div>
+
+            <div class="queue-status">
+                Our agent representative is busy,
+                you can contact us later
+            </div>
+
+            <div class="loading-dots">
+                <span></span><span></span><span></span>
+            </div>
+            <div class="queue-timer" id="queueTimer" style="margin-top:15px; text-align:center; color:#666;">
+                Menunggu...
+            </div>
+
+        </div>
+    </div>
+<script>
+setTimeout(() => {
+    window.location.href = "/customer/index.html";
+}, 3000);
+</script>
+
+</body>
+</html>
